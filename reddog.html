@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Video Red Dog (1000ms Delay)</title>
+    <style>
+        :root {
+            --bg-color: #2c3e50;
+            --table-color: #c0392b;
+            --card-width: 80px;
+            --card-height: 110px;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; 
+            padding-top: 2vh; 
+            min-height: 100vh;
+            margin: 0;
+            user-select: none;
+            overflow-y: auto; 
+            overflow-x: hidden;
+            box-sizing: border-box;
+            padding-bottom: 80px;
+        }
+
+        .game-title {
+            font-size: 1.5rem;
+            margin: 0 0 10px 0;
+            color: #f1c40f;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            font-weight: bold;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-size: 1.1rem;
+            margin-bottom: 20px; 
+            background: #34495e;
+            padding: 10px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            white-space: nowrap;
+            z-index: 10; 
+            width: 90%;
+            max-width: 600px;
+            box-sizing: border-box;
+        }
+
+        .game-table {
+            background-color: var(--table-color);
+            width: 95%;
+            max-width: 600px;
+            border-radius: 15px;
+            padding: 25px 15px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            border: 5px solid #f1c40f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 250px;
+            position: relative;
+        }
+
+        .spread-info {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #f1c40f;
+            text-shadow: 1px 1px 2px black;
+            margin-bottom: 15px;
+            height: 30px;
+        }
+
+        .cards-row {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            perspective: 1000px;
+            height: var(--card-height);
+            width: 100%;
+            align-items: center;
+        }
+
+        .card-placeholder {
+            width: var(--card-width);
+            height: var(--card-height);
+            border-radius: 6px;
+            border: 2px dashed rgba(255,255,255,0.3);
+            box-sizing: border-box;
+        }
+
+        .card-wrapper {
+            position: relative;
+            width: var(--card-width);
+            height: var(--card-height);
+            flex-shrink: 0;
+            transition: transform 0.3s;
+        }
+        
+        .card-wrapper.dealing {
+            transform: translateY(-30px) scale(1.1);
+            opacity: 0;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.4s;
+            border-radius: 6px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            font-size: 3rem; 
+            font-weight: bold;
+        }
+
+        .card.is-back {
+            transform: rotateY(180deg);
+        }
+
+        .card-inner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backface-visibility: hidden;
+            border-radius: 6px;
+            top: 0; left: 0;
+            background-color: white;
+            line-height: 1;
+            padding-top: 5px;
+        }
+
+        .card-front {
+            transform: rotateY(0deg);
+            z-index: 2;
+        }
+        .card-front.red { color: #e74c3c; }
+        .card-front.black { color: #2c3e50; }
+
+        .card-back {
+            transform: rotateY(180deg);
+            background: repeating-linear-gradient(45deg, #c0392b, #c0392b 10px, #a93226 10px, #a93226 20px);
+            z-index: 1;
+            border: 2px solid white;
+            box-sizing: border-box;
+        }
+
+        .card-suit { 
+            font-size: 4rem; 
+            margin-top: -5px;
+            line-height: 1;
+        }
+
+        .card-wrapper.win-card {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #f1c40f;
+            z-index: 10;
+        }
+
+        #message-area {
+            height: 40px;
+            margin-top: 2vh;
+            font-size: 1.3rem;
+            color: #f1c40f;
+            font-weight: bold;
+            text-align: center;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            text-shadow: 1px 1px 3px black;
+            background: rgba(0,0,0,0.3);
+            width: 90%;
+            border-radius: 5px;
+        }
+
+        .controls-container {
+             margin-top: 2vh;
+             width: 100%;
+             max-width: 600px;
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             gap: 10px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            position: relative;
+            z-index: 50;
+        }
+
+        .auto-panel {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 50;
+            margin-top: 15px;
+        }
+        
+        select {
+            padding: 8px;
+            border-radius: 5px;
+            border: none;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        button {
+            padding: 12px 18px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+            touch-action: manipulation;
+            text-transform: uppercase;
+            min-width: 80px;
+        }
+        button:active { transform: scale(0.96); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-bet { background-color: #3498db; color: white;}
+        .btn-action { background-color: #f39c12; color: white; width: 130px; font-size: 1.1rem;}
+        .btn-raise { background-color: #e74c3c; color: white; width: 130px; font-size: 1.1rem;}
+        .btn-collect { background-color: #27ae60; color: white; flex: 1;}
+        .btn-double { background-color: #9b59b6; color: white; flex: 1;}
+        
+        .btn-auto { background-color: #009688; color: white; min-width: 90px; }
+        .btn-auto.active { background-color: #e74c3c; animation: pulse 1.5s infinite; }
+
+        .paytable {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            color: white;
+            text-align: center;
+            line-height: 1.4;
+            max-width: 90%;
+            background: rgba(0,0,0,0.4);
+            padding: 10px 15px;
+            border-radius: 15px;
+            border: 2px solid #f1c40f;
+        }
+        .paytable span { color: #f1c40f; font-weight: bold; }
+
+        #double-up-area {
+            display: none; 
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        #double-up-cards {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        
+        .status-badge {
+            position: absolute; top: -26px; left: 50%; transform: translateX(-50%);
+            background-color: #f1c40f; color: #2c3e50; font-size: 0.75rem;
+            padding: 3px 8px; border-radius: 4px; font-weight: bold; opacity: 0;
+            transition: opacity 0.2s; pointer-events: none; z-index: 50;
+            white-space: nowrap;
+        }
+        .visible { opacity: 1; }
+        .status-badge.dealer { background-color: #95a5a6; color: white; }
+        .status-badge.win { background-color: #e74c3c; color: white; }
+        .status-badge.lose { background-color: #34495e; color: white; }
+
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @media (max-width: 600px) {
+            :root { --card-width: 60px; --card-height: 84px; }
+            .card { font-size: 2.2rem; } 
+            .card-suit { font-size: 3rem; }
+            .game-title { font-size: 1.3rem; margin-bottom: 5px; }
+            .info-panel { font-size: 0.9rem; padding: 8px 15px; width: 95%; margin-bottom: 10px; }
+            .game-table { padding: 15px 5px; min-height: 200px;}
+            .controls { padding: 0 5px; gap:5px;}
+            button { padding: 10px 8px; font-size: 0.85rem; min-width: 70px;}
+            .btn-action, .btn-raise { width: 110px;}
+            #message-area { font-size: 1rem; height: 35px;}
+            .spread-info { font-size: 1.1rem; }
+            .paytable { font-size: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1 class="game-title">Video Red Dog</h1>
+
+    <div class="info-panel">
+        <div>CREDITS: <span id="credits">100</span></div>
+        <div>BET: <span id="bet">1</span></div>
+        <div>WIN: <span id="win">0</span></div>
+    </div>
+
+    <div class="game-table" id="main-table">
+        <div class="spread-info" id="spread-info"></div>
+        <div class="cards-row">
+            <div id="card-left"></div>
+            <div id="card-center" class="card-placeholder"></div>
+            <div id="card-right"></div>
+        </div>
+    </div>
+
+    <div class="game-table" id="double-up-area" style="border-color: #9b59b6;">
+        <div class="hand-title" style="margin-bottom:15px; font-weight:bold;">DOUBLE UP: High Card Wins</div>
+        <div class="cards-row" id="double-up-cards"></div>
+    </div>
+
+    <div id="message-area">Place your bet to start</div>
+
+    <div class="controls-container">
+        <div class="controls" id="ctrl-betting">
+            <button class="btn-bet" onclick="changeBet(1)">BET +1</button>
+            <button class="btn-bet" onclick="changeBet(5)">MAX</button>
+            <button class="btn-action" onclick="startGame()">DEAL</button>
+        </div>
+
+        <div class="controls" id="ctrl-action" style="display:none;">
+            <button class="btn-action" onclick="playerCall()">CALL</button>
+            <button class="btn-raise" onclick="playerRaise()">RAISE (x2)</button>
+        </div>
+
+        <div class="controls" id="ctrl-win" style="display:none;">
+            <button class="btn-double" onclick="startDoubleUpGame()">DOUBLE UP</button>
+            <button class="btn-collect" onclick="collectWin()">COLLECT</button>
+        </div>
+    </div>
+
+    <div class="auto-panel">
+        <div style="font-size: 0.9rem; font-weight:bold;">AUTO:</div>
+        <select id="risk-select">
+            <option value="low">Conservative (Always Call)</option>
+            <option value="mid" selected>Balanced (Raise Spread 7+)</option>
+            <option value="high">Aggressive (Raise Spread 4+)</option>
+        </select>
+        <button id="btn-auto" class="btn-auto" onclick="toggleAuto()">START</button>
+    </div>
+
+    <div class="paytable">
+        <span>3 of a Kind:</span> 11x &nbsp;|&nbsp; <span>Spread 1:</span> 5x &nbsp;|&nbsp; <span>Spread 2:</span> 4x &nbsp;|&nbsp; <span>Spread 3:</span> 2x &nbsp;|&nbsp; <span>Spread 4+:</span> 1x<br>
+        Consecutive / Pair mismatch = PUSH (Return Bet)
+    </div>
+
+<script>
+    const SUITS = ['♠', '♣', '♥', '♦'];
+    const RANKS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+    const RANK_STR = {11:'J', 12:'Q', 13:'K', 14:'A'};
+
+    let deck = [];
+    let leftCard = null;
+    let rightCard = null;
+    let centerCard = null;
+    let currentSpread = 0;
+    let isPair = false;
+
+    let credits = 100;
+    let bet = 1;
+    let currentTotalBet = 0;
+    let winAmount = 0;
+    
+    // States: BETTING, DEALING, ACTION_SELECT, RESOLVING, WIN_DECISION, GAME_OVER, DOUBLE_UP_GAME, ANIMATING
+    let gameState = 'BETTING'; 
+    
+    let isAutoMode = false;
+    let autoInterval = null;
+    let consecutiveDoubles = 0;
+    let doubleUpHand = [];
+    let actionDelayTimestamp = 0; // Timer for Call/Raise delay
+    
+    const els = {
+        credits: document.getElementById('credits'),
+        bet: document.getElementById('bet'),
+        win: document.getElementById('win'),
+        msg: document.getElementById('message-area'),
+        spreadInfo: document.getElementById('spread-info'),
+        mainTable: document.getElementById('main-table'),
+        cardLeft: document.getElementById('card-left'),
+        cardCenter: document.getElementById('card-center'),
+        cardRight: document.getElementById('card-right'),
+        doubleUpArea: document.getElementById('double-up-area'),
+        doubleUpCards: document.getElementById('double-up-cards'),
+        ctrlBetting: document.getElementById('ctrl-betting'),
+        ctrlAction: document.getElementById('ctrl-action'),
+        ctrlWin: document.getElementById('ctrl-win'),
+        btnAuto: document.getElementById('btn-auto'),
+        riskSelect: document.getElementById('risk-select')
+    };
+
+    function init() {
+        updateUI();
+    }
+
+    // --- Card & Deck ---
+    function createDeck() {
+        deck = [];
+        for (let s of SUITS) {
+            for (let r of RANKS) {
+                deck.push({ suit: s, rank: r });
+            }
+        }
+        shuffleDeck();
+    }
+
+    function shuffleDeck() {
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+    }
+
+    function dealCard(targetElId, isFaceDown = false, delay = 0) {
+        if (deck.length === 0) createDeck();
+        const card = deck.pop();
+        
+        setTimeout(() => {
+             renderCard(card, document.getElementById(targetElId), isFaceDown);
+        }, delay);
+        return card;
+    }
+
+    function renderCard(card, containerEl, isFaceDown, badgeId = null, isAppend = false) {
+        if (!isAppend) {
+            containerEl.innerHTML = ''; 
+            containerEl.className = ''; 
+        }
+
+        let wrapper = document.createElement('div');
+        wrapper.className = 'card-wrapper dealing';
+        wrapper.id = `card-wrapper-${containerEl.id}-${deck.length}`; 
+        
+        if (badgeId) {
+            let badge = document.createElement('div');
+            badge.className = 'status-badge';
+            badge.id = badgeId;
+            wrapper.appendChild(badge);
+        }
+
+        let cardDiv = document.createElement('div');
+        cardDiv.className = isFaceDown ? 'card is-back' : 'card';
+        if (isAppend) {
+             cardDiv.id = `card-element-${badgeId}`; 
+        }
+
+        let backDiv = document.createElement('div');
+        backDiv.className = 'card-inner card-back';
+        
+        let frontDiv = document.createElement('div');
+        let colorClass = (card.suit === '♥' || card.suit === '♦') ? 'red' : 'black';
+        frontDiv.className = `card-inner card-front ${colorClass}`;
+        let rankDisplay = RANK_STR[card.rank] || card.rank;
+        frontDiv.innerHTML = `<div>${rankDisplay}</div><div class="card-suit">${card.suit}</div>`;
+
+        cardDiv.appendChild(backDiv);
+        cardDiv.appendChild(frontDiv);
+        wrapper.appendChild(cardDiv);
+        containerEl.appendChild(wrapper);
+
+        setTimeout(() => {
+            wrapper.classList.remove('dealing');
+        }, 50);
+        return wrapper;
+    }
+
+    // --- Game Logic ---
+    function changeBet(type) {
+        if (gameState !== 'BETTING') return;
+
+        if (type === 5) {
+            // MAX
+            bet = (credits >= 5) ? 5 : credits;
+        } else {
+            // +1
+            bet++;
+            // Loop logic
+            if (bet > 5) bet = 1;
+            if (bet > credits) bet = 1;
+        }
+        updateUI();
+    }
+
+    function startGame() {
+        if (credits < bet) {
+            els.msg.innerText = "Credits insufficient!";
+            if(isAutoMode) toggleAuto();
+            return;
+        }
+        
+        credits -= bet;
+        currentTotalBet = bet;
+        winAmount = 0;
+        consecutiveDoubles = 0;
+        leftCard = rightCard = centerCard = null;
+        currentSpread = 0;
+        isPair = false;
+        actionDelayTimestamp = 0;
+        
+        els.spreadInfo.innerText = '';
+        els.cardLeft.innerHTML = '';
+        els.cardRight.innerHTML = '';
+        els.cardCenter.innerHTML = '';
+        els.cardCenter.className = 'card-placeholder';
+        els.mainTable.style.display = 'flex';
+        els.doubleUpArea.style.display = 'none';
+
+        createDeck();
+        gameState = 'DEALING';
+        els.msg.innerText = "Dealing...";
+        updateUI();
+
+        leftCard = dealCard('card-left', false, 0);
+        rightCard = dealCard('card-right', false, 300);
+
+        setTimeout(checkInitialCards, 800);
+    }
+
+    function checkInitialCards() {
+        let rank1 = leftCard.rank;
+        let rank2 = rightCard.rank;
+        let low = Math.min(rank1, rank2);
+        let high = Math.max(rank1, rank2);
+
+        if (rank1 === rank2) {
+            isPair = true;
+            els.msg.innerText = "PAIR! Dealing 3rd card for 11x...";
+            els.spreadInfo.innerText = "PAIR";
+            gameState = 'RESOLVING';
+            setTimeout(dealCenterCard, 1000);
+
+        } else if (high - low === 1) {
+            els.msg.innerText = "CONSECUTIVE! It's a PUSH.";
+            els.spreadInfo.innerText = "CONSECUTIVE";
+            winAmount = currentTotalBet;
+            endRound();
+
+        } else {
+            currentSpread = high - low - 1;
+            els.msg.innerText = `SPREAD is ${currentSpread}. CALL or RAISE?`;
+            els.spreadInfo.innerText = `SPREAD: ${currentSpread} (Pays ${getSpreadPayout(currentSpread)}x)`;
+            gameState = 'ACTION_SELECT';
+            // ★ Set delay timestamp for Auto Mode (1000ms from now)
+            actionDelayTimestamp = Date.now() + 1000;
+            updateUI();
+        }
+    }
+
+    function getSpreadPayout(spread) {
+        if (spread === 1) return 5;
+        if (spread === 2) return 4;
+        if (spread === 3) return 2;
+        return 1; 
+    }
+
+    function playerCall() {
+        if (gameState !== 'ACTION_SELECT') return;
+        els.msg.innerText = "CALL. Dealing center card...";
+        gameState = 'RESOLVING';
+        updateUI();
+        setTimeout(dealCenterCard, 500);
+    }
+
+    function playerRaise() {
+        if (gameState !== 'ACTION_SELECT') return;
+        if (credits < bet) {
+            els.msg.innerText = "Not enough credits to RAISE!";
+            return;
+        }
+        credits -= bet;
+        currentTotalBet += bet;
+        els.msg.innerText = "RAISE! Dealing center card...";
+        gameState = 'RESOLVING';
+        updateUI();
+        setTimeout(dealCenterCard, 500);
+    }
+
+    function dealCenterCard() {
+        centerCard = dealCard('card-center', false, 0);
+        setTimeout(resolveGame, 800);
+    }
+
+    function resolveGame() {
+        let cRank = centerCard.rank;
+        let lRank = leftCard.rank;
+        let rRank = rightCard.rank;
+
+        if (isPair) {
+            if (cRank === lRank) {
+                winAmount = currentTotalBet * 11 + currentTotalBet;
+                els.msg.innerText = "THREE OF A KIND! Payout 11x!";
+                highlightWin(true);
+            } else {
+                winAmount = currentTotalBet;
+                els.msg.innerText = "PUSH (Not 3 of a Kind).";
+            }
+        } else {
+            let low = Math.min(lRank, rRank);
+            let high = Math.max(lRank, rRank);
+            
+            if (cRank > low && cRank < high) {
+                let payoutMult = getSpreadPayout(currentSpread);
+                winAmount = currentTotalBet * payoutMult + currentTotalBet;
+                els.msg.innerText = `YOU WIN! (Spread ${currentSpread} pays ${payoutMult}x)`;
+                highlightWin(true);
+            } else if (cRank === low || cRank === high) {
+                 winAmount = 0;
+                 els.msg.innerText = "MATCH! You Lose.";
+                 highlightWin(false);
+            } else {
+                winAmount = 0;
+                els.msg.innerText = "OUTSIDE! You Lose.";
+                highlightWin(false);
+            }
+        }
+        endRound();
+    }
+
+    function highlightWin(isWin) {
+        if(isWin) {
+            els.cardCenter.firstChild.classList.add('win-card');
+        }
+    }
+
+    function endRound() {
+        if (isAutoMode) {
+            gameState = 'ANIMATING'; // Pause
+            updateUI();
+            setTimeout(() => {
+                finalizeRound();
+            }, 1500); // 1.5s result view
+        } else {
+            finalizeRound();
+        }
+    }
+
+    function finalizeRound() {
+        if (winAmount > currentTotalBet) {
+             gameState = 'WIN_DECISION';
+             els.win.innerText = winAmount;
+        } else if (winAmount === currentTotalBet && winAmount > 0) {
+             collectWin();
+             return;
+        } else {
+             winAmount = 0;
+             if(credits === 0) {
+                els.msg.innerText += " GAME OVER";
+                gameState = 'GAME_OVER';
+                if(isAutoMode) toggleAuto();
+            } else {
+                gameState = 'BETTING';
+            }
+        }
+        updateUI();
+    }
+
+    function collectWin() {
+        credits += winAmount;
+        winAmount = 0;
+        els.msg.innerText = "COLLECTED!";
+        gameState = 'BETTING';
+        resetTableVisuals();
+        updateUI();
+    }
+    
+    function resetTableVisuals() {
+        els.cardLeft.innerHTML = '';
+        els.cardRight.innerHTML = '';
+        els.cardCenter.innerHTML = '';
+        els.cardCenter.className = 'card-placeholder';
+        els.spreadInfo.innerText = '';
+        els.mainTable.style.display = 'flex';
+        els.doubleUpArea.style.display = 'none';
+    }
+
+    // --- Double Up (High Card) ---
+    function startDoubleUpGame() {
+        gameState = 'DOUBLE_UP_GAME';
+        els.mainTable.style.display = 'none';
+        els.doubleUpArea.style.display = 'flex';
+        els.doubleUpCards.innerHTML = ''; 
+        doubleUpHand = [];
+        createDeck();
+
+        els.msg.innerText = "Dealer shows first card. Pick a higher card!";
+
+        let dealerCard = deck.pop();
+        doubleUpHand.push(dealerCard);
+        
+        let dWrap = renderCard(dealerCard, els.doubleUpCards, false, 'badge-du-0', true);
+        dWrap.style.pointerEvents = 'none';
+        let dBadge = document.getElementById('badge-du-0');
+        dBadge.innerText = "DEALER"; dBadge.classList.add('visible', 'dealer');
+
+        for(let i=1; i<=4; i++) {
+            let c = deck.pop();
+            doubleUpHand.push(c);
+            let wrap = renderCard(c, els.doubleUpCards, true, `badge-du-${i}`, true);
+            wrap.onclick = () => playDoubleUpPick(i);
+            wrap.style.cursor = 'pointer';
+        }
+        updateUI();
+    }
+
+    function playDoubleUpPick(index) {
+        if (gameState !== 'DOUBLE_UP_GAME') return;
+        
+        // Correct ID retrieval
+        let cardEl = document.getElementById(`card-element-badge-du-${index}`);
+        if(cardEl) cardEl.classList.remove('is-back');
+
+        let dealerRank = doubleUpHand[0].rank;
+        let playerRank = doubleUpHand[index].rank;
+        
+        gameState = 'ANIMATING'; 
+        updateUI();
+
+        setTimeout(() => {
+            let pBadge = document.getElementById(`badge-du-${index}`);
+            let isWin = false; let isLose = false;
+
+            if (playerRank > dealerRank) {
+                isWin = true;
+                winAmount *= 2;
+                consecutiveDoubles++;
+                els.msg.innerText = `YOU WIN! (${RANK_STR[playerRank]||playerRank} > ${RANK_STR[dealerRank]||dealerRank}) Total: ${winAmount}`;
+                pBadge.innerText = "WIN!"; pBadge.classList.add('visible', 'win');
+            } else if (playerRank < dealerRank) {
+                isLose = true;
+                winAmount = 0;
+                els.msg.innerText = `YOU LOSE. (${RANK_STR[playerRank]||playerRank} < ${RANK_STR[dealerRank]||dealerRank})`;
+                pBadge.innerText = "LOSE"; pBadge.classList.add('visible', 'lose');
+            } else {
+                els.msg.innerText = `PUSH (${RANK_STR[playerRank]||playerRank} = ${RANK_STR[dealerRank]||dealerRank})`;
+                pBadge.innerText = "PUSH"; pBadge.classList.add('visible');
+            }
+            
+            for(let i=1; i<=4; i++) {
+                 let el = document.getElementById(`card-element-badge-du-${i}`);
+                 if(el) el.classList.remove('is-back');
+            }
+
+            let delay = isAutoMode ? 500 : 0;
+            setTimeout(() => {
+                if (isLose) {
+                    if (credits === 0) { gameState = 'GAME_OVER'; if(isAutoMode) toggleAuto(); }
+                    else gameState = 'BETTING';
+                    resetTableVisuals();
+                } else {
+                    gameState = 'WIN_DECISION';
+                    els.win.innerText = winAmount;
+                }
+                updateUI();
+            }, delay);
+
+        }, 600);
+    }
+
+    // --- Auto Mode ---
+    function toggleAuto() {
+        isAutoMode = !isAutoMode;
+        if (isAutoMode) {
+            els.btnAuto.innerText = "STOP"; els.btnAuto.classList.add('active');
+            autoInterval = setInterval(autoTick, 1000); autoTick();
+        } else {
+            els.btnAuto.innerText = "START"; els.btnAuto.classList.remove('active');
+            clearInterval(autoInterval); autoInterval = null;
+        }
+        updateUI();
+    }
+
+    function autoTick() {
+        if (!isAutoMode) return;
+        if (gameState === 'DEALING' || gameState === 'RESOLVING' || gameState === 'ANIMATING') return;
+
+        const risk = els.riskSelect.value;
+
+        if (gameState === 'BETTING') {
+            if (credits < 1) { toggleAuto(); return; }
+            let targetBet = (risk === 'high' || credits >= 50) ? 5 : 1;
+             if (targetBet > credits) targetBet = credits;
+            if(bet !== targetBet) { bet = targetBet; updateUI(); }
+            startGame();
+        }
+        else if (gameState === 'ACTION_SELECT') {
+            // ★ Wait if delay has not passed
+            if (Date.now() < actionDelayTimestamp) return;
+
+            let shouldRaise = false;
+            if (risk === 'high') {
+                if (currentSpread >= 4) shouldRaise = true; 
+            } else if (risk === 'mid') {
+                if (currentSpread >= 7) shouldRaise = true; 
+            }
+            if (shouldRaise && credits >= bet) playerRaise();
+            else playerCall();
+        }
+        else if (gameState === 'WIN_DECISION') {
+            let shouldDu = false;
+            if (risk === 'high' && consecutiveDoubles < 4 && winAmount < 500) shouldDu = true;
+            else if (risk === 'mid' && consecutiveDoubles === 0 && winAmount < 50) shouldDu = true;
+
+            if (shouldDu) startDoubleUpGame();
+            else collectWin();
+        }
+        else if (gameState === 'DOUBLE_UP_GAME') {
+            playDoubleUpPick(Math.floor(Math.random() * 4) + 1);
+        }
+        else if (gameState === 'GAME_OVER') {
+            gameState = 'BETTING'; updateUI();
+        }
+    }
+
+    function updateUI() {
+        els.credits.innerText = credits;
+        els.bet.innerText = bet;
+        els.win.innerText = winAmount;
+
+        let isLocked = (gameState === 'DEALING' || gameState === 'RESOLVING' || gameState === 'ANIMATING');
+        let controlsDisabled = isLocked || isAutoMode;
+
+        els.ctrlBetting.style.display = (gameState === 'BETTING') ? 'flex' : 'none';
+        els.ctrlAction.style.display = (gameState === 'ACTION_SELECT') ? 'flex' : 'none';
+        els.ctrlWin.style.display = (gameState === 'WIN_DECISION' || gameState === 'DOUBLE_UP_GAME') ? 'flex' : 'none';
+
+        Array.from(document.querySelectorAll('.controls button:not(#btn-auto)')).forEach(btn => {
+            btn.disabled = controlsDisabled;
+        });
+        
+        if (gameState === 'ACTION_SELECT' && !controlsDisabled) {
+            if (credits < bet) document.querySelector('.btn-raise').disabled = true;
+        }
+
+        if (gameState === 'DOUBLE_UP_GAME') {
+             if(els.ctrlWin.querySelector('.btn-double')) els.ctrlWin.querySelector('.btn-double').style.display = 'none';
+        } else {
+             if(els.ctrlWin.querySelector('.btn-double')) els.ctrlWin.querySelector('.btn-double').style.display = 'inline-block';
+        }
+    }
+
+    init();
+
+</script>
+</body>
+</html>
